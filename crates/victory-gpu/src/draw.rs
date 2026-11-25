@@ -1878,20 +1878,34 @@ impl State {
         const MOST: u64 = 16 << 10;
         let mut bytes = Vec::new();
         for stage in p.stages.iter().filter(|s| s.shader.bakes) {
-            let tabled = |u: &&UsedResource| u.root == RootType::Table && u.kind != ResourceType::Sampler;
-            for u in stage.translated().used.iter().filter(tabled) {
-                let Some(Root::Table(table)) = self.roots_ref(false).get(usize::from(u.slot)) else {
-                    continue;
+            for u in stage.translated().used.iter().filter(|u| u.kind != ResourceType::Sampler) {
+                // Tables, and root views and root constants too: a bake whose
+                // records come by a root view had its sources never looked at.
+                let range = match (u.root, self.roots_ref(false).get(usize::from(u.slot))) {
+                    (RootType::Table, Some(Root::Table(table))) => {
+                        match crate::descriptor::view(table + u64::from(u.table_offset_dwords) * 4) {
+                            Some(View::Constant(address, size)) => Some((address, u64::from(size))),
+                            Some(view) => crate::descriptor::host::buffer_range(&view),
+                            None => None,
+                        }
+                    }
+                    // A root view has no size: as much of MOST as is there.
+                    (RootType::Descriptor, Some(&Root::View(address))) => Some((address, MOST)),
+                    (RootType::Constants, Some(Root::Constants(words))) => {
+                        bytes.extend(words.iter().flat_map(|w| w.to_le_bytes()));
+                        None
+                    }
+                    _ => None,
                 };
-                let range = match crate::descriptor::view(table + u64::from(u.table_offset_dwords) * 4) {
-                    Some(View::Constant(address, size)) => Some((address, u64::from(size))),
-                    Some(view) => crate::descriptor::host::buffer_range(&view),
-                    None => None,
-                };
-                if let Some((address, len)) = range.filter(|&(_, len)| len <= MOST) {
-                    let at = bytes.len();
-                    bytes.resize(at + (len as usize & !3), 0);
-                    if !crate::host::read_into(address as *const u8, &mut bytes[at..]) {
+                // A larger range is read up to MOST, not skipped.
+                if let Some((address, len)) = range {
+                    let most = len.min(MOST);
+                    for n in [most, 1 << 10, 256].into_iter().filter(|&n| n <= most) {
+                        let at = bytes.len();
+                        bytes.resize(at + (n as usize & !3), 0);
+                        if crate::host::read_into(address as *const u8, &mut bytes[at..]) {
+                            break;
+                        }
                         bytes.truncate(at);
                     }
                 }
