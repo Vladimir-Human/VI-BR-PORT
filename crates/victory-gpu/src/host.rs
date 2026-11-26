@@ -7887,6 +7887,12 @@ impl HostList {
         self.deferred().textures.insert(key)
     }
 
+    /// Whether `key` was asked about ([`HostList::first_use`]) since the
+    /// reset.
+    pub(crate) fn used(&self, key: usize) -> bool {
+        self.deferred().textures.contains(&key)
+    }
+
     /// Runs `work` when the list is submitted, in order with its copies.
     /// `work` may write title memory (refreshes after it copy again).
     pub(crate) fn defer(&self, work: impl Fn() + Send + 'static) {
