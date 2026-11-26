@@ -9232,6 +9232,7 @@ impl Host {
     /// as frame `frame` (saved if captures are on). `None` if nothing was
     /// shown; else, in diagnostics builds, whether the frame was black.
     pub(crate) fn present(&self, texture: &ID3D12Resource, state: u32, frame: u64) -> Option<bool> {
+        slow_frame(frame);
         // SAFETY: a live resource.
         let desc = unsafe { texture.GetDesc() };
         let Some(format) = swap_format(desc.Format) else {
@@ -10913,4 +10914,21 @@ mod batch {   // Batch::texture_due lives here; `mod tests` is already taken at 
 fn compare_join() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("VICTORY_CARD_COMPARE_JOIN").is_none_or(|v| v != "0"))
+}
+
+/// A frame that took long, said in the log on its own (the frame line every few seconds only gives
+/// the mean, and a single hitch disappears in it): over 100 ms a warning, over 500 ms an error,
+/// with the time since the last present and the pipelines still being made (a first draw with a
+/// new pipeline is the usual cause of one). The 33 ms the title asks for (30 fps) is the goal.
+fn slow_frame(frame: u64) {
+    static LAST: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+    let now = std::time::Instant::now();
+    let before = LAST.lock().unwrap_or_else(|e| e.into_inner()).replace(now);
+    let Some(before) = before else { return };
+    let ms = now.duration_since(before).as_secs_f64() * 1e3;
+    if ms > 500.0 {
+        tracing::error!(frame, ms = format_args!("{ms:.0}"), "slow frame: {ms:.0} ms (30 fps is 33 ms)");
+    } else if ms > 100.0 {
+        tracing::warn!(frame, ms = format_args!("{ms:.0}"), "slow frame: {ms:.0} ms (30 fps is 33 ms)");
+    }
 }
