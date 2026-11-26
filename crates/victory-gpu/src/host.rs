@@ -3643,6 +3643,7 @@ fn late_line(frames: f64) {
 pub(crate) mod aside;
 pub(crate) mod awake;
 mod card_steps;
+#[cfg(any(test, feature = "diagnostics"))]
 pub(crate) mod indirects;
 #[cfg(feature = "diagnostics")]
 mod panel;
@@ -7658,7 +7659,8 @@ enum Touch {
     Refresh(usize, usize, usize),
     /// The copy is given to shaders.
     Write(usize),
-    /// Title memory is written.
+    /// Title memory is written. (Only the tests give one: the host stops its steps there instead.)
+    #[cfg_attr(not(test), allow(dead_code))]
     Title,
     Nothing,
     /// Another part of the submission begins.
