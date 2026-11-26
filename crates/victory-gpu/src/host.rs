@@ -8656,6 +8656,16 @@ fn a_plane_is_shown_whole_unless_a_part_inside_it_is_named() {
     assert_eq!(shown_part(Some([0, 0, 3840, 2160]), 1920, 1080), [0.0, 0.0, 1.0, 1.0]);
 }
 
+#[cfg(test)]
+#[test]
+fn card_compare_pipeline_builds() {
+    if let Some(host) = host() {
+        host.make_card_work()
+            .map(|_| ())
+            .expect("card memory compare pipeline on the host D3D12 device");
+    }
+}
+
 /// On the host device (none: nothing is checked): a plane with no alpha
 /// under a half-clear one of another size comes out as the first, solid,
 /// with the second's colour added over half of it.
