@@ -93,12 +93,30 @@ impl Pending {
     }
 
     fn make(&self) {
+        let trace = std::env::var("VICTORY_PIPELINE_TRACE").ok();
+        // Serializes the trace's writes: workers otherwise interleave lines.
+        static TRACE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        if let Some(path) = &trace {
+            use std::io::Write;
+            let _trace = TRACE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+                let shaders: Vec<String> = self.shaders.iter().map(|s| format!("{} {}", s.stage, s.hash)).collect();
+                let _ = writeln!(f, "start\t{}\t{}", self.key, shaders.join(","));
+            }
+        }
         self.made.get_or_init(|| {
             let began = Instant::now();
             let made = HostPipeline::new(&self.shaders, self.graphics.as_deref());
             super::library::note_time(&self.key, began.elapsed().as_millis() as u64);
             made
         });
+        if let Some(path) = &trace {
+            use std::io::Write;
+            let _trace = TRACE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+                let _ = writeln!(f, "end\t{}", self.key);
+            }
+        }
         let (lock, done) = &DONE;
         let _held = lock.lock().unwrap_or_else(|e| e.into_inner());
         done.notify_all();
@@ -401,6 +419,11 @@ static AVAILABLE: Condvar = Condvar::new();
 /// Start or promote work for a draw without waiting behind the entire early
 /// list. Queue changes and worker claims happen under the same lock.
 fn start(p: &Arc<Pending>, priority: u8) {
+    // A skipped pipeline is never made (its draws are dropped): a few hang
+    // the driver's compiler and would hold the queue.
+    if super::creates_skipped(&p.shaders) {
+        return;
+    }
     if p.queue_state.load(Ordering::Relaxed) >= priority {
         return;
     }
