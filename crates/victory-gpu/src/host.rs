@@ -1334,52 +1334,22 @@ fn plane_pass() -> Option<&'static PlanePass> {
     .as_ref()
 }
 
-/// Compiles function `entry` of `source` for `target` with the system's
-/// compiler, as the indirect-argument clamp is (`crate::indirect`).
+/// Compiles a host shader, retrying through DXC if the first compiler
+/// refuses it or leaves out a requested root signature.
 pub(crate) fn compile(
     source: &str,
     entry: windows::core::PCSTR,
     target: windows::core::PCSTR,
 ) -> windows::core::Result<Vec<u8>> {
-    use windows::Win32::Graphics::Direct3D::Fxc::D3DCompile;
-    use windows::Win32::Graphics::Direct3D::ID3DBlob;
-    let mut code: Option<ID3DBlob> = None;
-    let mut errors: Option<ID3DBlob> = None;
-    // SAFETY: the source and names live through the call; out pointers ours.
-    let compiled = unsafe {
-        D3DCompile(
-            source.as_ptr().cast(),
-            source.len(),
-            windows::core::s!("victory"),
-            None,
-            None,
-            entry,
-            target,
-            0,
-            0,
-            &mut code,
-            Some(&mut errors),
-        )
+    use std::ffi::CStr;
+    use windows::Win32::Foundation::E_INVALIDARG;
+    // SAFETY: callers pass non-null NUL-terminated shader entry and profile names.
+    let entry = unsafe { CStr::from_ptr(entry.as_ptr().cast()) }.to_str();
+    let target = unsafe { CStr::from_ptr(target.as_ptr().cast()) }.to_str();
+    let (Ok(entry), Ok(target)) = (entry, target) else {
+        return Err(windows::core::Error::from_hresult(E_INVALIDARG));
     };
-    if let Err(e) = compiled {
-        if let Some(errors) = errors {
-            // SAFETY: the blob's own bytes.
-            let text = unsafe {
-                std::slice::from_raw_parts(
-                    errors.GetBufferPointer().cast::<u8>(),
-                    errors.GetBufferSize(),
-                )
-            };
-            tracing::warn!("a shader of ours: {}", String::from_utf8_lossy(text));
-        }
-        return Err(e);
-    }
-    let code = code.ok_or_else(windows::core::Error::empty)?;
-    // SAFETY: the blob's own bytes.
-    let bytes = unsafe {
-        std::slice::from_raw_parts(code.GetBufferPointer().cast::<u8>(), code.GetBufferSize())
-    };
-    Ok(bytes.to_vec())
+    crate::dxc::compile(source, entry, target)
 }
 
 impl PlanePass {
