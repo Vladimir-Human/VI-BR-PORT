@@ -1,31 +1,18 @@
-//! Compiling our own HLSL at run time.
+//! Compiles our own runtime HLSL under native Windows and Proton.
 //!
-//! A few of the host's passes are written in HLSL and compiled when the host
-//! starts: the indirect-argument clamp ([`crate::indirect`]), the compare of
-//! copies in the card's memory and the depth-plane twins ([`crate::host`]),
-//! and the in-place probe ([`crate::inplace`]). The system's compiler
-//! (`D3DCompile`, `d3dcompiler_47`) is tried first, as it always was. Under
-//! Wine and Proton that is vkd3d-shader, which refuses some of this source
-//! outright (`E5005: Method 'Load' is not defined on type
-//! 'RWByteAddressBuffer'`), and every caller then gives up: no argument
-//! clamp, so indirect executions are dropped; no card compare, so card
-//! buffers silently switch off; no twins. It also compiles the rest of the
-//! source but drops the root signature the shader asks for, so
-//! `CreateRootSignature` over its bytes fails and the twins still have no
-//! pipeline. So the same source is compiled with DXC (`dxcompiler.dll`) as
-//! shader model 6.0 when the system compiler refuses it, or leaves the root
-//! signature out of a shader that asked for one. The root signature stays
-//! inside the shader, so the callers see only bytes, and on Windows, where
-//! `D3DCompile` succeeds and keeps the root signature, nothing changes.
+//! The compositor, card-memory compare and indirect clamp shaders try
+//! system D3DCompile first. Wine's compiler refuses some of these shaders
+//! and omits requested root signatures from others. In either case, retry
+//! with DXC and keep the resulting root signature in the shader container.
 //!
-//! DXC is looked for in `VICTORY_DXC` (the DLL or its folder), beside the
-//! `dxil.dll` that shader validation uses (the Windows SDK ships the two
-//! together), then the executable's folder and System32. A container DXC
-//! compiled without finding `dxil.dll` carries a zero digest, which D3D12
-//! refuses: such containers are signed here (`sign`), `VICTORY_DXIL` naming
-//! the validator if it is somewhere else.
+//! Set `VICTORY_DXC` to the Windows SDK's `dxcompiler.dll` or its folder.
+//! The loader also checks beside the shader validator, beside the launcher
+//! and in System32. Set `VICTORY_DXIL` if the companion `dxil.dll` is stored
+//! separately.
 
 use std::path::PathBuf;
+
+use victory_shader::dxbc::{Container, FourCC};
 
 use windows::Win32::Foundation::HMODULE;
 use windows::Win32::Graphics::Direct3D::Dxc::{
@@ -80,7 +67,7 @@ pub(crate) fn compile(source: &str, entry: &str, target: &str) -> windows::core:
 /// Whether the container holds the root signature the shader asked for: both
 /// compilers store it as the chunk `RTS0`.
 fn carries_root_signature(bytes: &[u8]) -> bool {
-    bytes.windows(4).any(|chunk| chunk == b"RTS0")
+    Container::parse(bytes).is_ok_and(|container| container.part(FourCC::RTS0).is_some())
 }
 
 /// Whether the declaration of `entry` asks for a root signature. A source can
@@ -424,6 +411,23 @@ float4 lit() : SV_Target { return 1.0; }
             "float4 lit() : SV_Target { return 1.0; }",
             "lit"
         ));
+    }
+
+    #[test]
+    fn only_a_root_signature_part_triggers_detection() {
+        let mut bytes = [0u8; 48];
+        bytes[..4].copy_from_slice(b"DXBC");
+        bytes[24..28].copy_from_slice(&48u32.to_le_bytes());
+        bytes[28..32].copy_from_slice(&1u32.to_le_bytes());
+        bytes[32..36].copy_from_slice(&36u32.to_le_bytes());
+        bytes[36..40].copy_from_slice(b"STAT");
+        bytes[40..44].copy_from_slice(&4u32.to_le_bytes());
+        bytes[44..48].copy_from_slice(b"RTS0");
+        assert!(!carries_root_signature(&bytes));
+
+        bytes[36..40].copy_from_slice(b"RTS0");
+        assert!(carries_root_signature(&bytes));
+        assert!(!carries_root_signature(&bytes[..44]));
     }
 
     /// A shader with no root signature of its own keeps the system's bytes:
