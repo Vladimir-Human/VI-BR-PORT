@@ -16,6 +16,8 @@ const MAX_ENCODED_RUN: usize = 512;
 
 const ALLOWED_EXTENSIONS: &[&str] = &[
     "rs", "toml", "md", "txt", "lock", "yml", "yaml", "json", "hlsl", "hlsli", "ps1", "cmd", "sh",
+    // Node scripts we wrote (scripts/bc-png.mjs), as plain to read as the shell scripts.
+    "mjs",
     // Drawings we wrote (the charts of docs/img): text, under the same checks as any text, so a
     // picture encoded into one is turned down by its long run.
     "svg",
