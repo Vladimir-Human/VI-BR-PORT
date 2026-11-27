@@ -42,6 +42,16 @@ Andando na prisão a placa fica 93 a 97% ocupada: o limite ali é a GPU. O alvo 
 O que cada mudança deste fork mediu, antes e depois, com o commit de cada uma:
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
+O fps ao longo de uma rodada inteira, das linhas de quadro do próprio log (a faixa azul é a
+caminhada por script):
+
+![fps na prisão, main](docs/img/fps-prisao-main.svg)
+
+![fps na prisão com VICTORY_ASYNC_SUBMIT=1](docs/img/fps-prisao-async.svg)
+
+Os gráficos são gerados dos logs; este repositório não guarda capturas do jogo
+([docs/asset-policy.md](docs/asset-policy.md)).
+
 **Estabilidade:** nenhuma queda nem perda da placa nas rodadas de 26/11 com a configuração
 abaixo (mais de 30 rodadas de 7 a 12 minutos). Sessões longas ainda não foram medidas.
 
