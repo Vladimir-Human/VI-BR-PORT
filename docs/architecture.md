@@ -39,7 +39,7 @@ Converting them ahead of time from files is only a warm-up.
 | `victory-pipeline` | converter trait, content-addressed cache |
 | `victory-game` | the title-specific formats, build identities, hooks |
 | `apps/victory` | command-line front end |
-| `xtask` | asset-policy check, git hooks |
+| `xtask` | asset-policy check, the repository rules CI runs ([ci.md](ci.md)), git hooks |
 | `tests/fixtures/hle-probe` | a stand-in "title" (our own code) for loader tests |
 
 Everything except `victory-game` is platform-level and can be tested with
