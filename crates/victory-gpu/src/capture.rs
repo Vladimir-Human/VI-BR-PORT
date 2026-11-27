@@ -468,7 +468,7 @@ pub(crate) fn dump_targets(frame: u64) {
         }
         // Every submission has run; the dump's list moves it there and back.
         let state = copy.state.load(Relaxed);
-        dump_one(host, texture, state, frame, i, *resource as crate::object::This, &d, 0);
+        dump_one(host, texture, state, frame, i, *resource as crate::object::This, 0);
         // The slices after the first of a one-level 16-bit depth array (the
         // lamps' shadow maps have three), each on its own.
         if d.Flags.0 & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL.0 != 0
@@ -476,7 +476,7 @@ pub(crate) fn dump_targets(frame: u64) {
             && d.MipLevels == 1
         {
             for slice in 1..u32::from(d.DepthOrArraySize).min(8) {
-                dump_one(host, texture, state, frame, i, *resource as crate::object::This, &d, slice);
+                dump_one(host, texture, state, frame, i, *resource as crate::object::This, slice);
             }
         }
     }
@@ -531,9 +531,12 @@ fn dump_one(
     frame: u64,
     i: usize,
     resource: crate::object::This,
-    d: &D3D12_RESOURCE_DESC,
     slice: u32,
 ) {
+    // (Read here rather than passed in, which kept the arguments under
+    // clippy's limit: the caller's description of the same texture.)
+    // SAFETY: a live resource.
+    let d = &unsafe { texture.GetDesc() };
     let Ok(list) = host.new_list() else { return };
     let state = D3D12_RESOURCE_STATES(crate::host::legal_state(texture, state) as i32);
     let copy = D3D12_RESOURCE_STATE_COPY_SOURCE;
