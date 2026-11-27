@@ -1090,20 +1090,23 @@ mod tests {
 
     use super::*;
 
-    /// Whether `device` runs on the software adapter (WARP), by its adapter's LUID.
+    /// Whether `device` runs on a software adapter (WARP, or the basic render driver of a runner
+    /// without a card): its adapter, found by LUID, is flagged software or is Microsoft's.
     fn on_warp(device: &ID3D12Device) -> bool {
-        use windows::Win32::Graphics::Dxgi::IDXGIAdapter1;
-        use windows::core::Interface;
-        let Ok(warp) = crate::host::warp_adapter() else {
-            return false;
+        use windows::Win32::Graphics::Dxgi::{
+            CreateDXGIFactory2, DXGI_ADAPTER_FLAG_SOFTWARE, DXGI_CREATE_FACTORY_FLAGS, IDXGIAdapter1, IDXGIFactory4,
         };
-        // SAFETY: plain adapter and device queries.
+        const MICROSOFT: u32 = 0x1414;
+        // SAFETY: plain DXGI and device queries.
         unsafe {
-            let Ok(desc) = warp.cast::<IDXGIAdapter1>().and_then(|a| a.GetDesc1()) else {
+            let luid = device.GetAdapterLuid();
+            let Ok(factory) = CreateDXGIFactory2::<IDXGIFactory4>(DXGI_CREATE_FACTORY_FLAGS(0)) else {
                 return false;
             };
-            let luid = device.GetAdapterLuid();
-            luid.LowPart == desc.AdapterLuid.LowPart && luid.HighPart == desc.AdapterLuid.HighPart
+            let Ok(desc) = factory.EnumAdapterByLuid::<IDXGIAdapter1>(luid).and_then(|a| a.GetDesc1()) else {
+                return false;
+            };
+            desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE.0 as u32 != 0 || desc.VendorId == MICROSOFT
         }
     }
 
