@@ -29,7 +29,7 @@ $settings = @{
     VICTORY_PORT_CONSTANTS = '0'
     # The stand-in for the ray-traced indirect light: a faint constant inside rooms, raised where a
     # room is dark; outdoors the game's own light with a floor.
-    VICTORY_AMBIENT = 'constant:0.1:0.5'; VICTORY_AMBIENT_OUTSIDE = '1:0.08'
+    VICTORY_AMBIENT = 'constant:0.1:0.5'; VICTORY_AMBIENT_OUTSIDE = '1:0.16'
     VICTORY_AMBIENT_KEY = '0.2:8:room:air:geo'; VICTORY_AMBIENT_AIR = '0.8'
 }
 if ($Safe) {
