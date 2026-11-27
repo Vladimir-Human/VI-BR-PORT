@@ -1,139 +1,129 @@
-# VI-BR-PORT: a versão para placas de 8 GB
+# VI-BR-PORT: the build for 8 GB cards
 
-Camada de compatibilidade que roda no Windows, de forma nativa, a versão de
-**Xbox Series X|S** (plataforma *Scarlett*, jogos feitos com o **GDK**) de um
-título, a partir dos arquivos do próprio usuário. O código x86-64 do console
-roda sem alteração dentro do nosso processo; por baixo dele ficam as bibliotecas
-do sistema do console reescritas (HLE) e um back-end Direct3D 12 que recompila
-os shaders da GPU do console (GFX10/RDNA2) para DXIL.
+**English** | [Português](README.pt-BR.md)
 
-Este fork tem um alvo só: **placa NVIDIA de 8 GB com ondas de 32 lanes**
-(testado numa RTX 4060 Ti) ligada a um **monitor 1080p**.
+A compatibility layer that runs, natively on Windows, the **Xbox Series X|S** build
+(the *Scarlett* platform, titles made with the **GDK**) of a title, from the user's own
+files. The console's x86-64 code runs unchanged inside our process; underneath it are the
+console's system libraries rewritten (HLE) and a Direct3D 12 back end that recompiles the
+console GPU's shaders (GFX10/RDNA2) to DXIL.
 
-**Este repositório não contém arquivos, código ou recursos do jogo.** É preciso
-ter a sua própria cópia. Nada aqui tem ligação com o desenvolvedor ou a
-editora do jogo, nem é aprovado por eles.
+This fork has one target: an **8 GB NVIDIA card with waves of 32 lanes** (tested on an
+RTX 4060 Ti) on a **1080p monitor**.
 
-## Onde está (2026-11-26, noite)
+**This repository holds no files, code or assets of the game.** You need your own copy.
+Nothing here is connected with, or endorsed by, the game's developer or publisher.
 
-**Jogável no prólogo da Lucia, na prisão**: a cela, o corredor e a sala comum, até a cutscene do escritório
-da conselheira, com o jogador no controle, no perfil Series S.
+## Where it stands (2026-11-27)
+
+**Playable in Lucia's prologue, in the prison**: the cell, the corridor and the common
+room, up to the cutscene in the counselor's office, with the player in control, on the
+Series S profile. On the development branch the story plays on from there into the first
+open-world mission (the boat), at about 20 to 22 fps.
 
 ### Benchmark
 
-Build release do commit `8bb5142d`, perfil Series S, janela 1920x1080, upscaler do próprio
-jogo. PC: RTX 4060 Ti 8 GB (driver 621.40), i7-13700K, 64 GB de RAM, Windows 11. Medido em
-26/11/2026, numa máquina só.
+Release build of commit `8bb5142d`, Series S profile, 1920x1080 window, the title's own
+upscaler. PC: RTX 4060 Ti 8 GB (driver 621.40), i7-13700K, 64 GB of RAM, Windows 11.
+Measured on 2026-11-26, on one machine; nobody else has reproduced it yet.
 
-| Cena | Como foi medido | Resultado |
+| Scene | How it was measured | Result |
 |---|---|---|
-| Prisão, andando | caminhada de 3 min por script (teclas pelo `VICTORY_KEYS_FILE`), a partir do save da cela; média das linhas de quadro do log | **24,0 fps** (pior linha 16,3) |
-| Prisão, andando, vindo da abertura | a mesma caminhada, 470 s depois de abrir o jogo | 22,9 fps (pior linha 14,4) |
-| Prisão, andando, com `VICTORY_ASYNC_SUBMIT=1` | a mesma caminhada | 24,3 fps (pior linha 18,6) |
-| Prisão, personagem parada na cela | linhas de quadro do log, 35 s seguidos | **30,0 fps** (33,3 ms, o teto do jogo)¹ |
-| Cutscene 3D da abertura | 40 a 75 s depois de abrir a janela | 21,2 fps |
-| Vídeo da abertura | | 30 fps |
+| Prison, walking | a scripted 3-minute walk (keys through `VICTORY_KEYS_FILE`) from the cell's save; the mean of the run log's frame lines | **24.0 fps** (lowest line 16.3) |
+| Prison, walking, coming from the opening | the same walk, 470 s after the game opens | 22.9 fps (lowest line 14.4) |
+| Prison, walking, with `VICTORY_ASYNC_SUBMIT=1` | the same walk | 24.3 fps (lowest line 18.6) |
+| Prison, standing still in the cell | the log's frame lines, 35 s in a row | **30.0 fps** (33.3 ms, the title's cap)¹ |
+| Opening cutscene, 3D part | 40 to 75 s after the window opens | 21.2 fps |
+| Opening video | | 30 fps |
 
-¹ medido no ramo de teste do cabelo, um commit à frente deste.
+¹ measured on the hair test branch, one commit ahead of this one.
 
-Andando na prisão a placa fica 93 a 97% ocupada: o limite ali é a GPU. O alvo é 33 ms
-(30 fps) estáveis.
+Walking in the prison the card is 93 to 97% busy: the GPU is the limit there. The goal is
+a steady 33 ms (30 fps).
 
-O que cada mudança deste fork mediu, antes e depois, com o commit de cada uma:
+What each change of this fork measured, before and after, with its commit:
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
-O fps ao longo de uma rodada inteira, das linhas de quadro do próprio log (a faixa azul é a
-caminhada por script):
+The frame rate over a whole run, from the log's own frame lines (the blue band is the
+scripted walk):
 
-![fps na prisão, main](docs/img/fps-prisao-main.svg)
+![fps in the prison, main](docs/img/fps-prisao-main.svg)
 
-![fps na prisão com VICTORY_ASYNC_SUBMIT=1](docs/img/fps-prisao-async.svg)
+![fps in the prison with VICTORY_ASYNC_SUBMIT=1](docs/img/fps-prisao-async.svg)
 
-Os gráficos são gerados dos logs; este repositório não guarda capturas do jogo
+The charts are drawn from the logs; this repository keeps no pictures of the game
 ([docs/asset-policy.md](docs/asset-policy.md)).
 
-**Estabilidade:** nenhuma queda nem perda da placa nas rodadas de 26/11 com a configuração
-abaixo (mais de 30 rodadas de 7 a 12 minutos). Sessões longas ainda não foram medidas.
+**Stability:** no crash and no device removal in the runs of 2026-11-26 with the settings
+below (more than 30 runs of 7 to 12 minutes). Long sessions have not been measured yet.
 
-**Problemas conhecidos de imagem:** neblina grossa demais na sala comum; num quadro
-ocasional as paredes somem ou a luz interna apaga; o vidro das janelas não é desenhado
-(o shader de transmissão era recusado pela placa; corrigido no ramo de desenvolvimento);
-a tatuagem do braço do guarda sai com cor errada; 35 programas de luz, sombra e neblina
-ainda são traduzidos de forma aproximada em placas de 32 lanes.
+**Known picture problems:** fog far too thick in the prison's common room; in an
+occasional frame the walls vanish or the interior light goes out; the window glass is not
+drawn (the card refused the transmission shader; fixed on the development branch); the
+guard's tattooed arm comes out in a wrong colour; 35 programs of lighting, shadows and fog
+are still translated approximately on 32-lane cards; in the open world the boat comes out
+unlit and the sea shows black rectangles near the horizon.
 
-### Status in English (for trackers)
+## What this fork adds
 
-- **Loads, boots, menu, in the world, playable:** yes. Lucia's prologue in the prison
-  (cell, corridor, common room, up to the counselor's office cutscene) is played with player control.
-- **Frame rate** (release build, Series S profile, 1080p window, RTX 4060 Ti 8 GB,
-  i7-13700K): **24.0 fps** average over a scripted 3-minute walk in the prison (worst
-  5-second line 16.3), **30.0 fps** (the title's cap, 33.3 ms) standing still in the cell,
-  21.2 fps in the 3D part of the opening cutscene, 30 fps in the opening video.
-- **Stability:** no crash and no device removal in more than 30 runs of 7 to 12 minutes
-  on 2026-11-26; long sessions not measured yet.
-- **Rendering:** lit world with shadow maps, faces, skin, hair and animated mouths; ray
-  queries answered as misses. Known issues are listed above.
-- Self-reported, one PC. The walk is driven by a script through `VICTORY_KEYS_FILE`, and
-  the numbers are the means of the run log's own frame lines.
+- **`VICTORY_RT_MISS=1`**: the ray test hits nothing; without the ray-tracing structure
+  built, the shadows of local lights came out as garbage (black or "glittering" faces).
+- **The ray-tracing skinning is left out** with `RT_MISS=1`: the 30 `CSComputeSkinning*`
+  programs (`bvh_skinning`) redid every character's pose only for the ray-tracing
+  structure, which nobody uses that way, and were most of the card's time (about 6.8 to
+  10.9 fps on Series S). `VICTORY_RT_SKIN=1` runs them again.
+- **The face decoration bake is known by name** (`PS_DecorationBlend_*`,
+  `PS_BakeDecorations_*`, 51 programs): the list of 4 hashes left out the ones that make
+  the cutscene's faces, and the faces came out black.
+- **Lists of changed memory are compacted, not cleared,** when they fill up: clearing
+  left textures with old bytes after the memory changed.
+- **The present's planes are composed** (Series S: the world and the interface in separate
+  planes), sent ahead like a single-plane present, without waiting for the card.
+- **Mouths and facial expressions**: the network that animates faces keeps its values in
+  16-bit buffers, which the translation read as zeros through descriptor tables; they are
+  now moved as 16-bit integers and mouths open and close with the lines.
+- **Exact cascade shadows on 32-lane cards** (NVIDIA), and **texture views written by the
+  card** copied from the texture itself.
+- **A "Brazil | VIctory" window** with the fork's logo (`VICTORY_ICON`), and
+  **`VICTORY_KEYS_FILE`**: a key written to a file is pressed in the game without focus
+  (for scripts that get past the terms and the account picker, and for scripted walks).
+- **The opening video no longer steps back**: each list has its own upload buffer for the
+  video planes the CPU writes; with several frames in flight one frame overwrote the
+  one before, and the opening's titles came back in the middle of a fade.
+- **A new texture shows only after its upload** (`VICTORY_SHOW_AFTER`, now on; `0` turns
+  it off): a reused piece of the pool showed old bytes, and the car seat of the opening
+  became a green and blue checkerboard.
+- **Title patches in release builds too** (`VICTORY_UPSCALER=6`: the title's own upscaler
+  on Series S, since the FidelityFX passes have no DXIL here).
+- **Pipelines**: a 64 MB stack for the NVIDIA driver's compiler, compute pipelines started
+  at creation, a 500 ms wait only in the first 60 frames (8 ms after), and a late
+  pipeline holding up only the first frame that asks for it.
+- **wave64 on 32-lane cards**: programs that would ask for 64-lane waves take the
+  wave-wide form.
+- **DirectStorage** writes to read-only pages as the console's engine does.
+- `VICTORY_NO_WATCHDOG`, `VICTORY_NULL_MAGENTA` (diagnostics) and the cap of 262,144
+  remapped ranges.
 
-## O que este fork acrescenta
-
-- **`VICTORY_RT_MISS=1`**: o teste de raio não acerta nada; sem a estrutura de ray
-  tracing montada, as sombras de luzes locais saíam de lixo (rosto preto ou com "purpurina").
-- **Skinning do ray tracing pulado** com `RT_MISS=1`: os 30 programas `CSComputeSkinning*`
-  (`bvh_skinning`) refaziam a pose de todo personagem só para a estrutura de ray tracing,
-  que ninguém usa assim, e eram a maior parte do tempo da placa (~6,8 → ~10,9 fps no
-  Series S). `VICTORY_RT_SKIN=1` volta a rodá-los.
-- **Assado de decoração do rosto reconhecido pelo nome** (`PS_DecorationBlend_*`,
-  `PS_BakeDecorations_*`, 51 programas): a lista de 4 hashes deixava de fora o que
-  faz os rostos da cutscene, e o rosto saía preto.
-- **Listas de memória alterada compactadas em vez de apagadas** quando enchem: apagar
-  deixava texturas com bytes velhos depois de a memória mudar.
-- **Composição de planos do present** (Series S: o mundo e a interface em planos separados),
-  enviada à frente como o present de um plano só, sem esperar a placa.
-- **Boca e expressões dos rostos**: a rede que anima os rostos guarda os valores em buffers
-  de 16 bits e a tradução os lia como zero nas tabelas de descritores; agora são movidos
-  como inteiros de 16 bits e a boca abre e fecha nas falas.
-- **Sombras em cascata exatas em placas de 32 lanes** (NVIDIA) e **views de textura
-  escritas pela placa** copiadas da própria textura.
-- **Janela "Brazil | VIctory"** com a logo do fork (`VICTORY_ICON`) e
-  **`VICTORY_KEYS_FILE`**: uma tecla escrita num arquivo é apertada no jogo sem precisar
-  de foco (para scripts que passam pelos termos e pelo seletor de conta).
-- **Vídeo da abertura sem voltar quadros**: cada lista tem o seu próprio buffer de upload
-  para os planos de vídeo escritos pela CPU; com vários quadros em voo, um quadro
-  sobrescrevia o anterior e os letreiros da abertura voltavam no meio do fade.
-- **Textura nova só aparece depois do upload** (`VICTORY_SHOW_AFTER`, agora ligado; `0`
-  desliga): um pedaço reaproveitado do pool mostrava bytes velhos, e o banco do carro
-  da abertura virava um quadriculado verde e azul.
-- **Patches do título também no release** (`VICTORY_UPSCALER=6`: o upscaler do próprio
-  jogo no Series S, já que os passes do FidelityFX não têm DXIL aqui).
-- **Pipelines**: pilha de 64 MB para o compilador do driver da NVIDIA, compute começando
-  na criação, espera de 500 ms só nos 60 primeiros quadros (8 ms depois) e uma pipeline
-  atrasada segurando só o primeiro quadro que a pede.
-- **wave64 em placas de 32 lanes**: programas que pediriam ondas de 64 lanes usam a forma larga.
-- **DirectStorage** grava em páginas somente leitura como o motor do console.
-- `VICTORY_NO_WATCHDOG`, `VICTORY_NULL_MAGENTA` (diagnóstico) e o teto de 262.144
-  faixas remapeadas.
-
-## Como rodar
+## How to run
 
 ```powershell
-copy victory.example.toml victory.toml      # e aponte game_dir para a sua cópia
+copy victory.example.toml victory.toml      # and point game_dir at your copy
 cargo build --locked --release -p victory
-target\release\victory.exe shaders <os arquivos de shaders do jogo>
-target\release\victory.exe run <o executável do jogo> --console series-s --execute
+target\release\victory.exe shaders <the game's shader files>
+target\release\victory.exe run <the game's executable> --console series-s --execute
 ```
 
-Configuração usada nas medições acima: `VICTORY_RT_MISS=1`, `VICTORY_RELAY=2`, `VICTORY_CARD_STEPS=2`,
-`VICTORY_THIN=0`, `VICTORY_DISPLAY_MODE=1920x1080`, `VICTORY_PIPELINE_BOOK=1`,
-`VICTORY_MEMORY_CARD_MB=1024`, `VICTORY_UPSCALER=6`, `VICTORY_AMBIENT=constant:0.1`,
-`VICTORY_AMBIENT_AIR=0.8`, `VICTORY_CARD_BUFFERS_MIN_KB=64`, `VICTORY_PORT_CONSTANTS=1` (Series S). Não ligue
-`VICTORY_THIN=1` numa NVIDIA (o fps cai a menos da metade).
-`VICTORY_AMBIENT=constant:0.1`: sem raios, as sondas de luz indireta deixam blocos
-coloridos nas paredes (a mancha roxa da cela); uma luz indireta constante e fraca tira
-os blocos e mantém a noite escura. A estimativa (`VICTORY_AMBIENT=<número>`) posteriza
-paredes e pele, e níveis constantes altos deixam a noite clara como dia.
+Settings used for the measurements above: `VICTORY_RT_MISS=1`, `VICTORY_RELAY=2`,
+`VICTORY_CARD_STEPS=2`, `VICTORY_THIN=0`, `VICTORY_DISPLAY_MODE=1920x1080`,
+`VICTORY_PIPELINE_BOOK=1`, `VICTORY_MEMORY_CARD_MB=1024`, `VICTORY_UPSCALER=6`,
+`VICTORY_AMBIENT=constant:0.1`, `VICTORY_AMBIENT_AIR=0.8`, `VICTORY_CARD_BUFFERS_MIN_KB=64`,
+`VICTORY_PORT_CONSTANTS=1` (Series S). Do not turn `VICTORY_THIN=1` on with an NVIDIA
+card (the frame rate falls to less than half).
+`VICTORY_AMBIENT=constant:0.1`: without rays, the indirect-light probes leave coloured
+blocks on the walls (the purple patch in the cell); a constant, faint indirect light
+removes the blocks and keeps the night dark. The estimate (`VICTORY_AMBIENT=<number>`)
+posterizes walls and skin, and high constant levels make the night as bright as day.
 
-## Licença
+## License
 
-GPL-3.0-or-later, como o VIctory. Ver [LICENSE](LICENSE).
+GPL-3.0-or-later, like VIctory. See [LICENSE](LICENSE).
