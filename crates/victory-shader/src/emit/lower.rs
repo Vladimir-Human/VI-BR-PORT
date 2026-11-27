@@ -266,6 +266,19 @@ fn half_shift(width: u32) -> u32 {
     if width == 16 { 0 } else { 15 - width }
 }
 
+/// VGPRs the program reads lanes of by `v_readlane_b32`, kept also in LDS per lane: the
+/// read then needs no `WaveReadLaneAt`, which dxil-spirv (vkd3d-proton) moves out of the
+/// branches around it: that moving recursed without end in the title's ray-traced shadow
+/// programs, so their pipelines were never made.
+#[derive(Clone)]
+struct LaneMirror {
+    /// The first LDS dword, the VGPRs in order, and the dwords for each: the group's threads
+    /// in whole console waves.
+    base: u32,
+    regs: Vec<u8>,
+    span: u32,
+}
+
 struct Lower<'a> {
     s: Shader,
     x: &'a Parts<'a>,
@@ -371,6 +384,8 @@ struct Lower<'a> {
     /// A console wave64 program in host waves of 32: the LDS dword counting the console threads
     /// handed to host waves (`wave_base`), and the base made in the entry block.
     halves: Option<u32>,
+    /// VGPRs the program reads lanes of, also kept per lane in LDS ([`LaneMirror`]).
+    mirror: Option<LaneMirror>,
     wave_base: Option<V>,
     /// Vertex and mesh outputs holding 16-bit values: row, whether two per
     /// dword, and the row packed after it.
@@ -1493,6 +1508,7 @@ impl<'a> Lower<'a> {
         let mut exchange: Option<(u32, bool, Vec<bool>)> = None;
         // a console wave64 program in host waves of 32: the LDS dword of `wave_base`'s counter
         let mut halves: Option<u32> = None;
+        let mut mirror: Option<LaneMirror> = None;
         if let StageIo::Cs(cs) = x.native.io {
             s.threads = Some(cs.threads);
             s.lds_dwords = cs.lds_bytes() / 4;
@@ -1623,6 +1639,30 @@ impl<'a> Lower<'a> {
             }
             if console_lanes || one_wave && s.lds_dwords > 0 {
                 s.wave_size = Some(wave);
+            }
+            // LOCAL: VGPRs read by `v_readlane_b32` kept per lane in LDS as well, so the
+            // read needs no `WaveReadLaneAt` (dxil-spirv moves those out of branches and
+            // recursed without end in the title's ray-traced shadow programs).
+            if exchange.is_none() && halves.is_none() && s.wave_size == Some(wave) {
+                const MAX_LDS_DWORDS: u32 = 8192;
+                let mut regs: Vec<u8> = insts()
+                    .filter(|i| i.name() == "v_readlane_b32")
+                    .filter_map(|i| match &i.fields {
+                        Fields::Valu(v) => match v.src.first() {
+                            Some(&Operand::Vector { reg, .. }) => Some(reg),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .collect();
+                regs.sort_unstable();
+                regs.dedup();
+                let span = group.div_ceil(wave) * wave;
+                let need = regs.len() as u32 * span;
+                if !regs.is_empty() && s.lds_dwords.saturating_add(need) <= MAX_LDS_DWORDS {
+                    mirror = Some(LaneMirror { base: s.lds_dwords, regs, span });
+                    s.lds_dwords += need;
+                }
             }
         }
         // The title's barriers a thread of the group may never reach, which
@@ -1790,6 +1830,7 @@ impl<'a> Lower<'a> {
             clane: None,
             pair: None,
             halves,
+            mirror,
             wave_base: None,
             flat: None,
             no_barrier,
@@ -2498,6 +2539,7 @@ impl<'a> Lower<'a> {
             let mut i = 0;
             while i < p.blocks[b].insts.len() {
                 self.inst(b, i)?;
+                self.mirror_writes(b, i)?;
                 if let Some(end) = self.sections.get(&b).and_then(|s| s.get(&i)).map(|s| s.end) {
                     for j in i + 1..end {
                         self.section_inst(b, j, i);
@@ -4969,6 +5011,48 @@ impl<'a> Lower<'a> {
         let lane = self.s.m.select(c, any, lane, me);
         let at = self.read_lane(x, lane);
         (self.s.m.select(c, any, at, first), any)
+    }
+
+    /// The LDS dword of `lane` (this thread's own, or a lane of its wave) of mirrored VGPR
+    /// `reg` ([`LaneMirror`]), if `reg` is mirrored.
+    fn mirror_dword(&mut self, reg: u8, lane: Option<V>) -> Option<V> {
+        let m = self.mirror.clone()?;
+        let k = m.regs.iter().position(|&r| r == reg)? as u32;
+        let c = self.cur;
+        let thread = self.console_thread();
+        let at = match lane {
+            None => thread,
+            Some(lane) => {
+                let mask = self.s.m.i32(!(self.wave() - 1));
+                let first = self.s.m.bin(c, Bin::And, thread, mask);
+                self.s.m.bin(c, Bin::Add, first, lane)
+            }
+        };
+        let base = self.s.m.i32(m.base + k * m.span);
+        Some(self.s.m.bin(c, Bin::Add, base, at))
+    }
+
+    /// After instruction `i` of IR block `b`: each running lane's new value of a mirrored VGPR
+    /// it wrote goes to the lane's LDS dword ([`LaneMirror`]).
+    fn mirror_writes(&mut self, b: usize, i: usize) -> Result<(), Stop> {
+        if self.mirror.is_none() {
+            return Ok(());
+        }
+        let inst: &'a Inst = &self.x.p.blocks[b].insts[i];
+        for &(reg, value) in &inst.writes {
+            let Reg::V(r) = reg else { continue };
+            if !self.mirror.as_ref().is_some_and(|m| m.regs.contains(&r)) {
+                continue;
+            }
+            let x = self.i32_of(value).map_err(|_| {
+                unsupported(inst.machine.offset, "a lane-read VGPR written without a dword value")
+            })?;
+            let at = self.mirror_dword(r, None).expect("mirrored");
+            let lds = self.s.lds();
+            let ptr = self.s.m.element(self.cur, lds, at);
+            self.s.m.store(self.cur, ptr, x);
+        }
+        Ok(())
     }
 
     fn read_lane(&mut self, x: V, lane: V) -> V {
@@ -8859,6 +8943,16 @@ impl<'a> Lower<'a> {
             }
             "v_readlane_b32" => {
                 let (a, lane) = (s(self, 0)?, s(self, 1)?);
+                // LOCAL: a VGPR mirrored per lane in LDS (`LaneMirror`): the read needs no
+                // `WaveReadLaneAt`, which dxil-spirv moves out of branches.
+                if let Some(&Operand::Vector { reg, .. }) = v.src.first()
+                    && let Some(at) = self.mirror_dword(reg, Some(lane))
+                {
+                    let lds = self.s.lds();
+                    let ptr = self.s.m.element(self.cur, lds, at);
+                    let r = self.s.m.load(self.cur, ptr);
+                    return int(self, r);
+                }
                 // A computed lane in a pixel or vertex program is a host lane
                 // (from a mask or `v_mbcnt`); a constant one is the console's.
                 if self.mask_data == MaskData::Host && !matches!(lane, V::Const(_)) {
