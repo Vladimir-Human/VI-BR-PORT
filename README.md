@@ -39,6 +39,9 @@ jogo. PC: RTX 4060 Ti 8 GB (driver 621.40), i7-13700K, 64 GB de RAM, Windows 11.
 Andando na prisão a placa fica 93 a 97% ocupada: o limite ali é a GPU. O alvo é 33 ms
 (30 fps) estáveis.
 
+O que cada mudança deste fork mediu, antes e depois, com o commit de cada uma:
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
 **Estabilidade:** nenhuma queda nem perda da placa nas rodadas de 26/11 com a configuração
 abaixo (mais de 30 rodadas de 7 a 12 minutos). Sessões longas ainda não foram medidas.
 
