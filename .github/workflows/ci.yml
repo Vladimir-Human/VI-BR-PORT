@@ -15,6 +15,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
+# Cheapest steps first; docs/ci.md says how to run each one locally.
 jobs:
   check:
     runs-on: windows-latest
@@ -24,10 +25,20 @@ jobs:
       # The version and components pinned in rust-toolchain.toml.
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
+      # The fork's own rules, read from the sources in seconds: the asset
+      # policy, the shader cache's switches, English sources, documentation
+      # links, crate manifests (xtask/src/*.rs).
+      - name: Repository rules
+        run: cargo test -p xtask --locked
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Clippy, diagnostics build
         run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-      # Includes xtask's repository_passes_policy, the asset-policy check.
+      # Broken intra-doc links. The diagnostics build, which documents every
+      # module; links from public items into private ones are let through.
+      - name: Documentation
+        env:
+          RUSTDOCFLAGS: "-D warnings -A rustdoc::private_intra_doc_links"
+        run: cargo doc --workspace --no-deps --all-features --locked
       - name: Tests
         run: cargo test --workspace --locked
