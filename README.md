@@ -14,20 +14,54 @@ Este fork tem um alvo só: **placa NVIDIA de 8 GB com ondas de 32 lanes**
 ter a sua própria cópia. Nada aqui tem ligação com o desenvolvedor ou a
 editora do jogo, nem é aprovado por eles.
 
-## Onde está (2026-11-26)
+## Onde está (2026-11-26, noite)
 
-A base foi trocada por uma que, na mesma placa de 8 GB, mostra rostos, pele,
-cabelo e luz bem melhores. Por cima dela vieram os ajustes para NVIDIA de 8 GB.
+**Jogável no prólogo da Lucia, na prisão**: a cela, o corredor e a sala comum, até a cutscene do escritório
+da conselheira, com o jogador no controle, no perfil Series S.
 
-| | Medido (RTX 4060 Ti 8 GB, i7-13700K, 1080p) |
-|---|---|
-| Imagem, perfil Series X | rostos e pele com textura, luz coerente nas cutscenes |
-| fps, perfil Series X, release | ~5,6 (a placa sozinha leva ~105 ms por quadro) |
-| Memória da placa, Series X | no limite; na prisão passa do orçamento e a textura borra |
-| Perfil Series S, release, cutscene de abertura | imagem certa, boca animada, placa em 5,2 de 6,8 GB, ~18–19 fps (vídeo de abertura: 30 fps) |
-| Perfil Series S, release, prisão (jogável, ~430 s depois do início) | ~14 fps, luz limpa com `VICTORY_AMBIENT=constant:0.1` |
+### Benchmark
 
-**Ainda não está jogável.** O alvo é ter 15 fps ou mais, com imagem nítida, nas cutscenes e na prisão. Use o perfil Series S.
+Build release do commit `8bb5142d`, perfil Series S, janela 1920x1080, upscaler do próprio
+jogo. PC: RTX 4060 Ti 8 GB (driver 621.40), i7-13700K, 64 GB de RAM, Windows 11. Medido em
+26/11/2026, numa máquina só.
+
+| Cena | Como foi medido | Resultado |
+|---|---|---|
+| Prisão, andando | caminhada de 3 min por script (teclas pelo `VICTORY_KEYS_FILE`), a partir do save da cela; média das linhas de quadro do log | **24,0 fps** (pior linha 16,3) |
+| Prisão, andando, vindo da abertura | a mesma caminhada, 470 s depois de abrir o jogo | 22,9 fps (pior linha 14,4) |
+| Prisão, andando, com `VICTORY_ASYNC_SUBMIT=1` | a mesma caminhada | 24,3 fps (pior linha 18,6) |
+| Prisão, personagem parada na cela | linhas de quadro do log, 35 s seguidos | **30,0 fps** (33,3 ms, o teto do jogo)¹ |
+| Cutscene 3D da abertura | 40 a 75 s depois de abrir a janela | 21,2 fps |
+| Vídeo da abertura | | 30 fps |
+
+¹ medido no ramo de teste do cabelo, um commit à frente deste.
+
+Andando na prisão a placa fica 93 a 97% ocupada: o limite ali é a GPU. O alvo é 33 ms
+(30 fps) estáveis.
+
+**Estabilidade:** nenhuma queda nem perda da placa nas rodadas de 26/11 com a configuração
+abaixo (mais de 30 rodadas de 7 a 12 minutos). Sessões longas ainda não foram medidas.
+
+**Problemas conhecidos de imagem:** neblina grossa demais na sala comum; num quadro
+ocasional as paredes somem ou a luz interna apaga; o vidro das janelas não é desenhado
+(o shader de transmissão era recusado pela placa; corrigido no ramo de desenvolvimento);
+a tatuagem do braço do guarda sai com cor errada; 35 programas de luz, sombra e neblina
+ainda são traduzidos de forma aproximada em placas de 32 lanes.
+
+### Status in English (for trackers)
+
+- **Loads, boots, menu, in the world, playable:** yes. Lucia's prologue in the prison
+  (cell, corridor, common room, up to the counselor's office cutscene) is played with player control.
+- **Frame rate** (release build, Series S profile, 1080p window, RTX 4060 Ti 8 GB,
+  i7-13700K): **24.0 fps** average over a scripted 3-minute walk in the prison (worst
+  5-second line 16.3), **30.0 fps** (the title's cap, 33.3 ms) standing still in the cell,
+  21.2 fps in the 3D part of the opening cutscene, 30 fps in the opening video.
+- **Stability:** no crash and no device removal in more than 30 runs of 7 to 12 minutes
+  on 2026-11-26; long sessions not measured yet.
+- **Rendering:** lit world with shadow maps, faces, skin, hair and animated mouths; ray
+  queries answered as misses. Known issues are listed above.
+- Self-reported, one PC. The walk is driven by a script through `VICTORY_KEYS_FILE`, and
+  the numbers are the means of the run log's own frame lines.
 
 ## O que este fork acrescenta
 
@@ -79,7 +113,8 @@ target\release\victory.exe run <o executável do jogo> --console series-s --exec
 
 Configuração usada nas medições acima: `VICTORY_RT_MISS=1`, `VICTORY_RELAY=2`, `VICTORY_CARD_STEPS=2`,
 `VICTORY_THIN=0`, `VICTORY_DISPLAY_MODE=1920x1080`, `VICTORY_PIPELINE_BOOK=1`,
-`VICTORY_MEMORY_CARD_MB=1024`, `VICTORY_UPSCALER=6` (Series S). Não ligue
+`VICTORY_MEMORY_CARD_MB=1024`, `VICTORY_UPSCALER=6`, `VICTORY_AMBIENT=constant:0.1`,
+`VICTORY_AMBIENT_AIR=0.8`, `VICTORY_CARD_BUFFERS_MIN_KB=64`, `VICTORY_PORT_CONSTANTS=1` (Series S). Não ligue
 `VICTORY_THIN=1` numa NVIDIA (o fps cai a menos da metade).
 `VICTORY_AMBIENT=constant:0.1`: sem raios, as sondas de luz indireta deixam blocos
 coloridos nas paredes (a mancha roxa da cela); uma luz indireta constante e fraca tira
