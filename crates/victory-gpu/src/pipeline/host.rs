@@ -1090,6 +1090,23 @@ mod tests {
 
     use super::*;
 
+    /// Whether `device` runs on the software adapter (WARP), by its adapter's LUID.
+    fn on_warp(device: &ID3D12Device) -> bool {
+        use windows::Win32::Graphics::Dxgi::IDXGIAdapter1;
+        use windows::core::Interface;
+        let Ok(warp) = crate::host::warp_adapter() else {
+            return false;
+        };
+        // SAFETY: plain adapter and device queries.
+        unsafe {
+            let Ok(desc) = warp.cast::<IDXGIAdapter1>().and_then(|a| a.GetDesc1()) else {
+                return false;
+            };
+            let luid = device.GetAdapterLuid();
+            luid.LowPart == desc.AdapterLuid.LowPart && luid.HighPart == desc.AdapterLuid.HighPart
+        }
+    }
+
     /// A triangle mesh shader of our own and a pixel shader for it.
     const MS: &str = "struct V { float4 p : SV_Position; };
         [outputtopology(\"triangle\")] [numthreads(1, 1, 1)]
@@ -1240,6 +1257,11 @@ mod tests {
         };
         if !host.depth_bounds() {
             eprintln!("no host depth bounds support; skipped");
+            return;
+        }
+        // WARP (the CI runner has no card) reports the test supported and passes the draw anyway.
+        if on_warp(&host.device) {
+            eprintln!("depth bounds on the software adapter; skipped");
             return;
         }
         let Some(dxc) = dxc() else {
