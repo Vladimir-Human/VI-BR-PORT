@@ -605,10 +605,18 @@ fn skipped_shader(p: &Pipeline) -> Option<&str> {
 
 /// Whether one of `shaders` is in `VICTORY_SKIP_PIPELINES`: its pipelines are not made at
 /// all (a few hang the driver's compiler and would hold the make queue).
+/// The list is a diagnostics switch, as the dropping of their draws is: a plain build makes them.
+#[cfg(all(windows, feature = "diagnostics"))]
 pub(crate) fn creates_skipped(shaders: &[Arc<Shader>]) -> bool {
     skipped_in(shaders).is_some()
 }
 
+#[cfg(not(all(windows, feature = "diagnostics")))]
+pub(crate) fn creates_skipped(_: &[Arc<Shader>]) -> bool {
+    false
+}
+
+#[cfg(all(windows, feature = "diagnostics"))]
 fn skipped_in(shaders: &[Arc<Shader>]) -> Option<&str> {
     static HASHES: OnceLock<Vec<String>> = OnceLock::new();
     let hashes = HASHES.get_or_init(|| {
