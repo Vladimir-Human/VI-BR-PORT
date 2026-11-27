@@ -596,12 +596,16 @@ mod tests {
     /// and the pointer, the scratch register and the flags come out as from the loop.
     #[test]
     fn a_clzero_loop_becomes_plain_stores() {
-        use windows_sys::Win32::System::Memory::{MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_EXECUTE_READWRITE, VirtualAlloc, VirtualFree};
+        use windows_sys::Win32::System::Memory::{MEM_RELEASE, VirtualFree};
         // Against rdx (rm rax, reg rdx) and against rcx, the scratch register.
         for (cmp, by) in [([0x48, 0x39, 0xd0], 2), ([0x48, 0x39, 0xc8], 1), ([0x4c, 0x39, 0xc0], 8)] {
             // SAFETY: memory of our own, written and run inside it.
             unsafe {
-                let page = VirtualAlloc(std::ptr::null(), 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) as usize;
+                // Near this test's own code, as the title's loops lie near each other: the
+                // stubs are placed once, near the first loop patched, and a page anywhere
+                // else may be out of a jump's reach of them (then left unpatched, which
+                // failed this test now and then in a full run).
+                let page = near(a_clzero_loop_becomes_plain_stores as *const () as usize).unwrap_or(0);
                 assert_ne!(page, 0);
                 // A function of (start, end): the start in rax, the end in its register, the
                 // loop at 16, and what rax became.
