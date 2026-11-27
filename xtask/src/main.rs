@@ -2,6 +2,7 @@
 
 mod doc_links;
 mod english;
+mod manifests;
 mod policy;
 mod rules;
 mod rust_text;

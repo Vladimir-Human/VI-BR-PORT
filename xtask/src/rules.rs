@@ -12,6 +12,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("shader cache switches", crate::switches::run),
     ("English sources", crate::english::run),
     ("documentation links", crate::doc_links::run),
+    ("crate manifests", crate::manifests::run),
 ];
 
 pub fn run(root: &Path) -> Result<()> {
