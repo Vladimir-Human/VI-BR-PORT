@@ -22,6 +22,9 @@ editora do jogo, nem é aprovado por eles.
 da conselheira, com o jogador no controle, no perfil Series S. No ramo de desenvolvimento a
 história segue dali até a primeira missão em mundo aberto (o barco), a cerca de 20 a 22 fps.
 
+**Vídeo** (NVIDIA RTX 4060 Ti 8 GB, a caminhada na prisão com o fps na tela):
+<https://youtu.be/HI7cEpJPhP4>
+
 ### Benchmark
 
 Build release do commit `8bb5142d`, perfil Series S, janela 1920x1080, upscaler do próprio

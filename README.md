@@ -21,6 +21,9 @@ room, up to the cutscene in the counselor's office, with the player in control, 
 Series S profile. On the development branch the story plays on from there into the first
 open-world mission (the boat), at about 20 to 22 fps.
 
+**Video** (NVIDIA RTX 4060 Ti 8 GB, the prison walk with the frame rate on screen):
+<https://youtu.be/HI7cEpJPhP4>
+
 ### Benchmark
 
 Release build of commit `8bb5142d`, Series S profile, 1920x1080 window, the title's own
