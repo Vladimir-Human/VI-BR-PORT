@@ -267,8 +267,17 @@ pub fn check(
             ));
         }
     }
+    // A keyed switch the cache file reads itself, outside the key's function
+    // (`VICTORY_WAVE_WIDE_FOR`, which picks per program how the translator is
+    // run), is not stale: what it changes is the translation all the same.
+    let cache_test = rust_text::test_only(cache);
+    let read_by_cache: BTreeSet<&str> = switch_literals(cache)
+        .into_iter()
+        .filter(|(_, at)| !body.contains(at) && !cache_test.contains(*at))
+        .map(|(name, _)| name)
+        .collect();
     for name in &keyed {
-        if !read.contains_key(name) {
+        if !read.contains_key(name) && !read_by_cache.contains(name.as_str()) {
             problems.push(format!(
                 "{name} is in the shader cache key ({CACHE}) but the translator does not read it"
             ));
@@ -363,6 +372,17 @@ mod tests {
         let p = check(&[lib], CACHE, &through, &[("VICTORY_GONE", "prints")]);
         // VICTORY_B keyed but unread, VICTORY_L's function gone, VICTORY_GONE unread.
         assert_eq!(p.len(), 3, "{p:?}");
+    }
+
+    #[test]
+    fn a_keyed_switch_the_cache_reads_itself_is_not_stale() {
+        let lib = src(
+            "crates/victory-shader/src/lib.rs",
+            "fn a() { var(\"VICTORY_A\"); }\n",
+        );
+        let cache = format!("{CACHE}fn pick() {{ var(\"VICTORY_B\"); }}\n");
+        let p = check(&[lib], &cache, &[], &[]);
+        assert!(p.is_empty(), "{p:?}");
     }
 
     #[test]
