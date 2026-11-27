@@ -1,5 +1,6 @@
 //! Repository maintenance. Run with `cargo xtask <command>`.
 
+mod english;
 mod policy;
 mod rules;
 mod rust_text;

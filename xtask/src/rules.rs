@@ -8,7 +8,10 @@ use anyhow::{Result, bail};
 /// Each check: its name and what it finds wrong.
 type Check = fn(&Path) -> Result<Vec<String>>;
 
-const CHECKS: &[(&str, Check)] = &[("shader cache switches", crate::switches::run)];
+const CHECKS: &[(&str, Check)] = &[
+    ("shader cache switches", crate::switches::run),
+    ("English sources", crate::english::run),
+];
 
 pub fn run(root: &Path) -> Result<()> {
     let mut failed = 0;

@@ -563,7 +563,7 @@ mod tests {
 
     #[test]
     fn names_that_are_not_utf8_are_reported_lossily() {
-        // The symbol name "Café" is stored as UTF-8; replacing its lead byte
+        // The symbol name "Caf\u{e9}" is stored as UTF-8; replacing its lead byte
         // leaves a stray continuation byte, so the member holds a name that
         // is not valid UTF-8.
         let mut lib = archive(vec![(
