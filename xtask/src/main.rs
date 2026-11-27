@@ -1,6 +1,9 @@
 //! Repository maintenance. Run with `cargo xtask <command>`.
 
 mod policy;
+mod rules;
+mod rust_text;
+mod switches;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,6 +27,9 @@ enum Cmd {
         #[arg(long)]
         staged: bool,
     },
+    /// Check the fork's own rules on the sources (the same checks
+    /// `cargo test -p xtask` runs): see xtask/src/rules.rs.
+    Rules,
     /// Point git at .githooks/ so every commit runs the policy check.
     InstallHooks,
 }
@@ -32,6 +38,7 @@ fn main() -> Result<()> {
     let root = workspace_root();
     match Cli::parse().command {
         Cmd::Policy { staged } => policy::run(&root, staged),
+        Cmd::Rules => rules::run(&root),
         Cmd::InstallHooks => {
             let status = Command::new("git")
                 .args(["config", "core.hooksPath", ".githooks"])
