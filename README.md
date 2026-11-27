@@ -16,39 +16,42 @@ Nothing here is connected with, or endorsed by, the game's developer or publishe
 
 ## Where it stands (2026-11-27)
 
-**Playable in Lucia's prologue, in the prison**: the cell, the corridor and the common
-room, up to the cutscene in the counselor's office, with the player in control, on the
-Series S profile. On the development branch the story plays on from there into the first
-open-world mission (the boat), at about 20 to 22 fps.
+**Playable from the opening through Lucia's prologue in the prison** (the cell, the
+corridor, the common room, the counselor's office) **and on into the first open-world
+mission (the boat)**, with the player in control, on the Series S profile.
 
-**Video** (NVIDIA RTX 4060 Ti 8 GB, the prison walk with the frame rate on screen):
-<https://youtu.be/HI7cEpJPhP4>
+**Video** (NVIDIA RTX 4060 Ti 8 GB, the prison walk with the frame rate on screen; recorded
+on 26 Nov, before the gains below): <https://youtu.be/HI7cEpJPhP4>
 
 ### Benchmark
 
-Release build of commit `8bb5142d`, Series S profile, 1920x1080 window, the title's own
-upscaler. PC: RTX 4060 Ti 8 GB (driver 621.40), i7-13700K, 64 GB of RAM, Windows 11.
-Measured on 2026-11-26, on one machine; nobody else has reproduced it yet.
+Release build of `main`, started with `scripts\play.ps1` (its settings are under
+[How to test it with the frame rate we get](#how-to-test-it-with-the-frame-rate-we-get)),
+Series S profile, 1920x1080 window, the title's own upscaler. PC: RTX 4060 Ti 8 GB (driver
+621.40), i7-13700K, 64 GB of RAM, Windows 11. One machine. Each figure is the mean of the
+run log's frame lines (one every 5 seconds). The column of 26 Nov is commit `8bb5142d` with
+that day's settings.
 
-| Scene | How it was measured | Result |
-|---|---|---|
-| Prison, walking | a scripted 3-minute walk (keys through `VICTORY_KEYS_FILE`) from the cell's save; the mean of the run log's frame lines | **24.0 fps** (lowest line 16.3) |
-| Prison, walking, coming from the opening | the same walk, 470 s after the game opens | 22.9 fps (lowest line 14.4) |
-| Prison, walking, with `VICTORY_ASYNC_SUBMIT=1` | the same walk | 24.3 fps (lowest line 18.6) |
-| Prison, standing still in the cell | the log's frame lines, 35 s in a row | **30.0 fps** (33.3 ms, the title's cap)¹ |
-| Opening cutscene, 3D part | 40 to 75 s after the window opens | 21.2 fps |
-| Opening video | | 30 fps |
+| Scene | How it was measured | 26 Nov | 27 Nov |
+|---|---|---|---|
+| Prison, walking | a scripted 3-minute walk (keys through `VICTORY_KEYS_FILE`) from the cell's save | 24.0 fps (lowest line 16.3) | **26.6 to 27.9 fps** (lowest line 18.1 to 24.4; up to 31% of the lines at the title's cap of 30) |
+| First open-world mission, the boat | 70 seconds driving the boat, from the save at the counselor's office | 20 to 22 fps | **28.7 to 29.1 fps** (lowest line 28.2) |
+| Opening cutscene, 3D part | the first two minutes of a new game | 21.2 fps | **25.6 fps** (lowest line 18.5; the first scene runs at 30) |
+| Prison, standing still in the cell | the log's frame lines, 35 s in a row | 30.0 fps | **30.0 fps** (33.3 ms, the title's cap) |
+| Opening video | | 30 fps | 30 fps |
 
-¹ measured on the hair test branch, one commit ahead of this one.
-
-Walking in the prison the card is 93 to 97% busy: the GPU is the limit there. The goal is
-a steady 33 ms (30 fps).
+The goal is a steady 33 ms (30 fps) from the opening to the boat. It is not there yet. The
+boat is one frame a second short and holds its rate. The prison walk and the opening reach
+the cap in their lighter stretches and fall to 18 to 24 fps in the heavy ones. On the boat
+the card is the limit (98% busy). In the prison and the opening two things are at the limit
+together: the card (83 to 92% busy) and the layer's thread that prepares the submissions
+(31 to 34 ms of work a frame).
 
 What each change of this fork measured, before and after, with its commit:
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 The frame rate over a whole run, from the log's own frame lines (the blue band is the
-scripted walk):
+scripted walk; these are runs of 26 Nov):
 
 ![fps in the prison, main](docs/img/fps-prisao-main.svg)
 
@@ -57,18 +60,37 @@ scripted walk):
 The charts are drawn from the logs; this repository keeps no pictures of the game
 ([docs/asset-policy.md](docs/asset-policy.md)).
 
-**Stability:** no crash and no device removal in the runs of 2026-11-26 with the settings
-below (more than 30 runs of 7 to 12 minutes). Long sessions have not been measured yet.
+**Stability:** no crash and no device removal with these settings in the runs of 26 and
+27 Nov (more than a hundred runs of 4 to 12 minutes). Long sessions have not been measured
+yet.
 
-**Known picture problems:** fog far too thick in the prison's common room; in an
-occasional frame the walls vanish or the interior light goes out; the window glass is not
-drawn (the card refused the transmission shader; fixed on the development branch); the
-guard's tattooed arm comes out in a wrong colour; 35 programs of lighting, shadows and fog
-are still translated approximately on 32-lane cards; in the open world the boat comes out
-unlit and the sea shows black rectangles near the horizon.
+**Known picture problems:** the opening's night scenes are darker than on the console (the
+stand-in for the ray-traced indirect light); in an occasional frame the walls vanish or the
+interior light goes out; 35 programs of lighting, shadows and fog are still translated
+approximately on 32-lane cards; the boat ride has not been checked frame by frame (on
+26 Nov the boat came out unlit and the sea showed black rectangles near the horizon).
+Fixed since 26 Nov: the prison's common room (it was dark under the fog; it is readable
+now), the guard's tattooed arm (textures were refused for want of card memory that was in
+fact free), the window glass, blocks of noise baked into clothes.
 
 ## What this fork adds
 
+- **Thin lists on NVIDIA** (`VICTORY_THIN=1`): a list call writes its arguments down and
+  eight threads of the layer translate them beside the title. The pass that bakes
+  decorations onto clothes is translated at the title's own call, in the title's order
+  (`VICTORY_THIN_BAKE`); out of order it left blocks of noise on clothes.
+- **Compares on the card that read less** (`VICTORY_CARD_COMPARE_EVERY=30`): a range of a
+  title buffer a shader may have written is read whole once in 30 submissions and only its
+  lately changed pieces between (the opening read 2.4 GB of buffers a frame to find some
+  30 changed pieces; it reads 0.5 GB).
+- **The room kept for render targets follows what they take** (1.4 GB on Series S with
+  the title's upscaler) instead of a fixed 3 GB of an 8 GB card: textures were refused
+  for want of memory that was free.
+- **The copies whose bytes changed come from a list** (`VICTORY_CARD_TOUCHED=1`) instead
+  of a look at every one of 3,700 copies at each submission.
+- **The stand-in for indirect light tells rooms from outdoors** (the word `room` of
+  `VICTORY_AMBIENT_KEY`, and `VICTORY_AMBIENT_OUTSIDE`): a faint constant inside rooms,
+  raised where a room is dark; outdoors the game's own light with a floor.
 - **`VICTORY_RT_MISS=1`**: the ray test hits nothing; without the ray-tracing structure
   built, the shadows of local lights came out as garbage (black or "glittering" faces).
 - **The ray-tracing skinning is left out** with `RT_MISS=1`: the 30 `CSComputeSkinning*`
@@ -107,25 +129,50 @@ unlit and the sea shows black rectangles near the horizon.
 - `VICTORY_NO_WATCHDOG`, `VICTORY_NULL_MAGENTA` (diagnostics) and the cap of 262,144
   remapped ranges.
 
-## How to run
+## How to test it with the frame rate we get
+
+From a normal PowerShell window (not as administrator: the driver then keeps its shader
+cache elsewhere), in the repository's folder:
 
 ```powershell
 copy victory.example.toml victory.toml      # and point game_dir at your copy
 cargo build --locked --release -p victory
+$env:VICTORY_RT_MISS = '1'                  # a translation setting: the shader cache is keyed on it
 target\release\victory.exe shaders <the game's shader files>
-target\release\victory.exe run <the game's executable> --console series-s --execute
+scripts\play.ps1 -Exe <the game's executable> -Build release
 ```
 
-Settings used for the measurements above: `VICTORY_RT_MISS=1`, `VICTORY_RELAY=2`,
-`VICTORY_CARD_STEPS=2`, `VICTORY_THIN=0`, `VICTORY_DISPLAY_MODE=1920x1080`,
-`VICTORY_PIPELINE_BOOK=1`, `VICTORY_MEMORY_CARD_MB=1024`, `VICTORY_UPSCALER=6`,
-`VICTORY_AMBIENT=constant:0.1`, `VICTORY_AMBIENT_AIR=0.8`, `VICTORY_CARD_BUFFERS_MIN_KB=64`,
-`VICTORY_PORT_CONSTANTS=1` (Series S). Do not turn `VICTORY_THIN=1` on with an NVIDIA
-card (the frame rate falls to less than half).
-`VICTORY_AMBIENT=constant:0.1`: without rays, the indirect-light probes leave coloured
-blocks on the walls (the purple patch in the cell); a constant, faint indirect light
-removes the blocks and keeps the night dark. The estimate (`VICTORY_AMBIENT=<number>`)
-posterizes walls and skin, and high constant levels make the night as bright as day.
+The `shaders` step is needed once for each build of the translator (a few minutes).
+After the first run, `target\release\victory.exe warm --used` makes ahead the pipelines
+that run drew with (about 4,000 here), so that later runs do not stop to make them; the
+first minutes in a new place are slower until then. The window's title shows the fps, the
+ms a frame and the draws a frame; the log has a frame line every 5 seconds
+(`... fps, ... ms/frame (... preparing ...)`).
+
+`scripts\play.ps1` sets what the benchmark above was measured with. The settings that
+make the frame rate, with what each measured on the RTX 4060 Ti (before → after):
+
+| Setting | What it does | Measured here |
+|---|---|---|
+| `VICTORY_PORT_CONSTANTS=0` | the title's 182 MB buffer of constants is a copy in the card's memory, not read in place from the PC's memory | boat 23.8 → 27.7 fps; prison walk 23.0 → 25.4 |
+| `VICTORY_THIN=1` | a list call only writes its arguments down; eight threads of the layer translate the calls beside the title | prison walk 25.3 → 27.5 fps (lowest line 24.2); boat 27.7 → 29.1 |
+| `VICTORY_PORT_GUARD=1`, `VICTORY_PORT_JOURNAL=1` | the guards' lock is shared, and what the heaps hold is kept in a journal | prison walk: 29.4 → 26.6 ms preparing a frame |
+| `VICTORY_CARD_TOUCHED=1` | the copies whose bytes changed come from a list, not from a look at all 3,700 at every submission | about 3 ms less preparing a frame |
+| `VICTORY_CARD_COMPARE_EVERY=30` | a range a shader may have written is read whole on the card once in 30 submissions, only its lately changed pieces between | opening: 2.4 → 0.5 GB read a frame, 9.9 → 1.8 ms of card time; with thin lists, 21.7 → 25.6 fps |
+| (no setting; `VICTORY_CARD_ROOM_FOR_TARGETS_MB` fixes it by hand) | the room kept for render targets follows what they take (1.4 GB) instead of a fixed 3 GB | "no room" for a texture 122 → 12 times a run; textures left with wrong bytes 2,790 → 0 |
+| `VICTORY_AMBIENT=constant:0.1:0.5`, `VICTORY_AMBIENT_OUTSIDE=1:0.08`, `VICTORY_AMBIENT_KEY=0.2:8:room:air:geo`, `VICTORY_AMBIENT_AIR=0.8` | the stand-in for the ray-traced indirect light: a faint constant inside rooms, raised where a room is dark; outdoors the game's own light with a floor | picture only: the common room is readable and the night street keeps the glow of its lamps |
+| `VICTORY_RT_MISS=1`, `VICTORY_UPSCALER=6`, `VICTORY_MEMORY_CARD_MB=1024`, `VICTORY_DISPLAY_MODE=1920x1080`, `VICTORY_PIPELINE_BOOK=1`, `--console series-s` | every ray test answers "nothing hit"; the title's own upscaler; the Series S profile at 1080p; the pipelines a run draws with are written down for `warm` | the base of every measurement |
+
+Any of them can be changed for one run:
+`scripts\play.ps1 -Exe ... -Build release -More @{VICTORY_THIN='0'}`. `-Safe` runs without
+the newer ways (the first thing to try when something is wrong). On another card try
+`-More @{VICTORY_PORT_CONSTANTS='1'}` as well: which of the two is faster depends on the
+card and its driver.
+
+Tried and left off, because they measured slower or no better here:
+`VICTORY_CARD_COMPARE_HOT` (the exact form of the compare above: 8 to 50 ms more preparing
+a frame), `VICTORY_ASYNC_SUBMIT=1` (25.7 fps against 25.6), `VICTORY_HEAP_RECHECK=0`,
+`VICTORY_PORT_CONSTANTS_ORDER=1` (19.2 fps against 23.0).
 
 ## License
 

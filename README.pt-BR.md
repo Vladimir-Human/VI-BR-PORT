@@ -18,38 +18,42 @@ editora do jogo, nem é aprovado por eles.
 
 ## Onde está (2026-11-27)
 
-**Jogável no prólogo da Lucia, na prisão**: a cela, o corredor e a sala comum, até a cutscene do escritório
-da conselheira, com o jogador no controle, no perfil Series S. No ramo de desenvolvimento a
-história segue dali até a primeira missão em mundo aberto (o barco), a cerca de 20 a 22 fps.
+**Jogável da abertura ao prólogo da Lucia na prisão** (a cela, o corredor, a sala comum, o
+escritório da conselheira) **e dali até a primeira missão em mundo aberto (o barco)**, com
+o jogador no controle, no perfil Series S.
 
-**Vídeo** (NVIDIA RTX 4060 Ti 8 GB, a caminhada na prisão com o fps na tela):
-<https://youtu.be/HI7cEpJPhP4>
+**Vídeo** (NVIDIA RTX 4060 Ti 8 GB, a caminhada na prisão com o fps na tela; gravado em
+26/11, antes dos ganhos abaixo): <https://youtu.be/HI7cEpJPhP4>
 
 ### Benchmark
 
-Build release do commit `8bb5142d`, perfil Series S, janela 1920x1080, upscaler do próprio
-jogo. PC: RTX 4060 Ti 8 GB (driver 621.40), i7-13700K, 64 GB de RAM, Windows 11. Medido em
-26/11/2026, numa máquina só.
+Build release da `main`, aberto com o `scripts\play.ps1` (a configuração dele está em
+[Como testar com o desempenho que estamos tendo](#como-testar-com-o-desempenho-que-estamos-tendo)),
+perfil Series S, janela 1920x1080, upscaler do próprio jogo. PC: RTX 4060 Ti 8 GB (driver
+621.40), i7-13700K, 64 GB de RAM, Windows 11. Uma máquina só. Cada número é a média das
+linhas de quadro do log da rodada (uma a cada 5 segundos). A coluna de 26/11 é o commit
+`8bb5142d` com a configuração daquele dia.
 
-| Cena | Como foi medido | Resultado |
-|---|---|---|
-| Prisão, andando | caminhada de 3 min por script (teclas pelo `VICTORY_KEYS_FILE`), a partir do save da cela; média das linhas de quadro do log | **24,0 fps** (pior linha 16,3) |
-| Prisão, andando, vindo da abertura | a mesma caminhada, 470 s depois de abrir o jogo | 22,9 fps (pior linha 14,4) |
-| Prisão, andando, com `VICTORY_ASYNC_SUBMIT=1` | a mesma caminhada | 24,3 fps (pior linha 18,6) |
-| Prisão, personagem parada na cela | linhas de quadro do log, 35 s seguidos | **30,0 fps** (33,3 ms, o teto do jogo)¹ |
-| Cutscene 3D da abertura | 40 a 75 s depois de abrir a janela | 21,2 fps |
-| Vídeo da abertura | | 30 fps |
+| Cena | Como foi medido | 26/11 | 27/11 |
+|---|---|---|---|
+| Prisão, andando | caminhada de 3 min por script (teclas pelo `VICTORY_KEYS_FILE`), a partir do save da cela | 24,0 fps (pior linha 16,3) | **26,6 a 27,9 fps** (pior linha 18,1 a 24,4; até 31% das linhas no teto de 30 do jogo) |
+| Primeira missão em mundo aberto, o barco | 70 segundos pilotando o barco, a partir do save do escritório da conselheira | 20 a 22 fps | **28,7 a 29,1 fps** (pior linha 28,2) |
+| Cutscene da abertura, parte 3D | os dois primeiros minutos de um jogo novo | 21,2 fps | **25,6 fps** (pior linha 18,5; a primeira cena roda a 30) |
+| Prisão, personagem parada na cela | linhas de quadro do log, 35 s seguidos | 30,0 fps | **30,0 fps** (33,3 ms, o teto do jogo) |
+| Vídeo da abertura | | 30 fps | 30 fps |
 
-¹ medido no ramo de teste do cabelo, um commit à frente deste.
-
-Andando na prisão a placa fica 93 a 97% ocupada: o limite ali é a GPU. O alvo é 33 ms
-(30 fps) estáveis.
+O alvo é 33 ms (30 fps) estáveis da abertura ao barco. Ainda não chegou. O barco fica um
+quadro por segundo abaixo e segura o ritmo. A caminhada na prisão e a abertura batem no
+teto nos trechos leves e caem a 18 a 24 fps nos pesados. No barco o limite é a placa (98%
+ocupada). Na prisão e na abertura duas coisas estão no limite juntas: a placa (83 a 92%
+ocupada) e a thread da camada que prepara as submissões (31 a 34 ms de trabalho por
+quadro).
 
 O que cada mudança deste fork mediu, antes e depois, com o commit de cada uma:
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 O fps ao longo de uma rodada inteira, das linhas de quadro do próprio log (a faixa azul é a
-caminhada por script):
+caminhada por script; são rodadas de 26/11):
 
 ![fps na prisão, main](docs/img/fps-prisao-main.svg)
 
@@ -58,18 +62,38 @@ caminhada por script):
 Os gráficos são gerados dos logs; este repositório não guarda capturas do jogo
 ([docs/asset-policy.md](docs/asset-policy.md)).
 
-**Estabilidade:** nenhuma queda nem perda da placa nas rodadas de 26/11 com a configuração
-abaixo (mais de 30 rodadas de 7 a 12 minutos). Sessões longas ainda não foram medidas.
+**Estabilidade:** nenhuma queda nem perda da placa com esta configuração nas rodadas de
+26 e 27/11 (mais de cem rodadas de 4 a 12 minutos). Sessões longas ainda não foram
+medidas.
 
-**Problemas conhecidos de imagem:** neblina grossa demais na sala comum; num quadro
-ocasional as paredes somem ou a luz interna apaga; o vidro das janelas não é desenhado
-(o shader de transmissão era recusado pela placa; corrigido no ramo de desenvolvimento);
-a tatuagem do braço do guarda sai com cor errada; 35 programas de luz, sombra e neblina
-ainda são traduzidos de forma aproximada em placas de 32 lanes; no mundo aberto o barco sai
-sem luz e o mar mostra retângulos pretos perto do horizonte.
+**Problemas conhecidos de imagem:** as cenas noturnas da abertura saem mais escuras que no
+console (o substituto da luz indireta por raios); num quadro ocasional as paredes somem ou
+a luz interna apaga; 35 programas de luz, sombra e neblina ainda são traduzidos de forma
+aproximada em placas de 32 lanes; o trecho do barco ainda não foi conferido quadro a
+quadro (em 26/11 o barco saía sem luz e o mar mostrava retângulos pretos perto do
+horizonte). Corrigido desde 26/11: a sala comum da prisão (ficava escura debaixo da
+neblina; agora dá para ver), o braço tatuado do guarda (texturas eram recusadas por falta
+de uma memória da placa que estava livre), o vidro das janelas, blocos de ruído nas
+roupas.
 
 ## O que este fork acrescenta
 
+- **Listas finas na NVIDIA** (`VICTORY_THIN=1`): a chamada de lista só anota os
+  argumentos e oito threads da camada traduzem ao lado do jogo. O passe que assa as
+  decorações nas roupas é traduzido na própria chamada do jogo, na ordem do jogo
+  (`VICTORY_THIN_BAKE`); fora de ordem ele deixava blocos de ruído nas roupas.
+- **Comparações na placa que leem menos** (`VICTORY_CARD_COMPARE_EVERY=30`): uma faixa de
+  buffer do jogo que um shader pode ter escrito é lida inteira uma vez a cada 30
+  submissões, e entre elas só os pedaços que mudaram há pouco (a abertura lia 2,4 GB de
+  buffers por quadro para achar uns 30 pedaços mudados; agora lê 0,5 GB).
+- **A reserva para render targets segue o que eles ocupam** (1,4 GB no Series S com o
+  upscaler do jogo) em vez de 3 GB fixos de uma placa de 8 GB: texturas eram recusadas por
+  falta de uma memória que estava livre.
+- **As cópias que mudaram vêm de uma lista** (`VICTORY_CARD_TOUCHED=1`) em vez de uma
+  olhada em cada uma das 3.700 cópias a cada submissão.
+- **O substituto da luz indireta separa interior de exterior** (a palavra `room` do
+  `VICTORY_AMBIENT_KEY` e o `VICTORY_AMBIENT_OUTSIDE`): uma constante fraca dentro dos
+  cômodos, mais alta onde o cômodo está escuro; fora, a luz do próprio jogo com um piso.
 - **`VICTORY_RT_MISS=1`**: o teste de raio não acerta nada; sem a estrutura de ray
   tracing montada, as sombras de luzes locais saíam de lixo (rosto preto ou com "purpurina").
 - **Skinning do ray tracing pulado** com `RT_MISS=1`: os 30 programas `CSComputeSkinning*`
@@ -107,24 +131,50 @@ sem luz e o mar mostra retângulos pretos perto do horizonte.
 - `VICTORY_NO_WATCHDOG`, `VICTORY_NULL_MAGENTA` (diagnóstico) e o teto de 262.144
   faixas remapeadas.
 
-## Como rodar
+## Como testar com o desempenho que estamos tendo
+
+Numa janela normal do PowerShell (não como administrador: aí o driver guarda o cache de
+shaders em outro lugar), na pasta do repositório:
 
 ```powershell
 copy victory.example.toml victory.toml      # e aponte game_dir para a sua cópia
 cargo build --locked --release -p victory
+$env:VICTORY_RT_MISS = '1'                  # configuração de tradução: o cache de shaders depende dela
 target\release\victory.exe shaders <os arquivos de shaders do jogo>
-target\release\victory.exe run <o executável do jogo> --console series-s --execute
+scripts\play.ps1 -Exe <o executável do jogo> -Build release
 ```
 
-Configuração usada nas medições acima: `VICTORY_RT_MISS=1`, `VICTORY_RELAY=2`, `VICTORY_CARD_STEPS=2`,
-`VICTORY_THIN=0`, `VICTORY_DISPLAY_MODE=1920x1080`, `VICTORY_PIPELINE_BOOK=1`,
-`VICTORY_MEMORY_CARD_MB=1024`, `VICTORY_UPSCALER=6`, `VICTORY_AMBIENT=constant:0.1`,
-`VICTORY_AMBIENT_AIR=0.8`, `VICTORY_CARD_BUFFERS_MIN_KB=64`, `VICTORY_PORT_CONSTANTS=1` (Series S). Não ligue
-`VICTORY_THIN=1` numa NVIDIA (o fps cai a menos da metade).
-`VICTORY_AMBIENT=constant:0.1`: sem raios, as sondas de luz indireta deixam blocos
-coloridos nas paredes (a mancha roxa da cela); uma luz indireta constante e fraca tira
-os blocos e mantém a noite escura. A estimativa (`VICTORY_AMBIENT=<número>`) posteriza
-paredes e pele, e níveis constantes altos deixam a noite clara como dia.
+O passo `shaders` é preciso uma vez a cada build do tradutor (alguns minutos). Depois da
+primeira rodada, `target\release\victory.exe warm --used` deixa prontas as pipelines com
+que essa rodada desenhou (umas 4.000 aqui), para as rodadas seguintes não pararem para
+criá-las; até lá os primeiros minutos num lugar novo são mais lentos. O título da janela
+mostra fps, ms por quadro e draws por quadro; o log tem uma linha de quadro a cada 5
+segundos (`... fps, ... ms/frame (... preparing ...)`).
+
+O `scripts\play.ps1` liga o que foi usado no benchmark acima. As configurações que fazem
+o fps, com o que cada uma mediu na RTX 4060 Ti (antes → depois):
+
+| Configuração | O que faz | Medido aqui |
+|---|---|---|
+| `VICTORY_PORT_CONSTANTS=0` | o buffer de constantes de 182 MB do jogo é uma cópia na memória da placa, em vez de lido direto da memória do PC | barco 23,8 → 27,7 fps; caminhada na prisão 23,0 → 25,4 |
+| `VICTORY_THIN=1` | a chamada de lista só anota os argumentos; oito threads da camada traduzem as chamadas ao lado do jogo | caminhada na prisão 25,3 → 27,5 fps (pior linha 24,2); barco 27,7 → 29,1 |
+| `VICTORY_PORT_GUARD=1`, `VICTORY_PORT_JOURNAL=1` | a trava dos guardas é compartilhada, e o que os heaps guardam fica num diário | caminhada na prisão: 29,4 → 26,6 ms de preparo por quadro |
+| `VICTORY_CARD_TOUCHED=1` | as cópias que mudaram vêm de uma lista, não de uma olhada nas 3.700 a cada submissão | uns 3 ms a menos de preparo por quadro |
+| `VICTORY_CARD_COMPARE_EVERY=30` | uma faixa que um shader pode ter escrito é lida inteira na placa uma vez a cada 30 submissões, e entre elas só os pedaços que mudaram há pouco | abertura: 2,4 → 0,5 GB lidos por quadro, 9,9 → 1,8 ms de placa; com as listas finas, 21,7 → 25,6 fps |
+| (sem configuração; `VICTORY_CARD_ROOM_FOR_TARGETS_MB` fixa à mão) | a reserva para render targets segue o que eles ocupam (1,4 GB) em vez de 3 GB fixos | "sem espaço" para textura 122 → 12 vezes por rodada; texturas deixadas com bytes errados 2.790 → 0 |
+| `VICTORY_AMBIENT=constant:0.1:0.5`, `VICTORY_AMBIENT_OUTSIDE=1:0.08`, `VICTORY_AMBIENT_KEY=0.2:8:room:air:geo`, `VICTORY_AMBIENT_AIR=0.8` | o substituto da luz indireta por raios: uma constante fraca dentro dos cômodos, mais alta onde o cômodo está escuro; fora, a luz do próprio jogo com um piso | só imagem: a sala comum dá para ver e a rua à noite mantém o brilho dos postes |
+| `VICTORY_RT_MISS=1`, `VICTORY_UPSCALER=6`, `VICTORY_MEMORY_CARD_MB=1024`, `VICTORY_DISPLAY_MODE=1920x1080`, `VICTORY_PIPELINE_BOOK=1`, `--console series-s` | todo teste de raio responde "não acertou nada"; o upscaler do próprio jogo; o perfil Series S em 1080p; as pipelines com que a rodada desenha ficam anotadas para o `warm` | a base de todas as medições |
+
+Qualquer uma pode ser trocada numa rodada:
+`scripts\play.ps1 -Exe ... -Build release -More @{VICTORY_THIN='0'}`. O `-Safe` roda sem
+os caminhos mais novos (a primeira coisa a tentar quando algo sai errado). Em outra placa
+tente também `-More @{VICTORY_PORT_CONSTANTS='1'}`: qual dos dois é mais rápido depende da
+placa e do driver.
+
+Testado e deixado desligado, porque mediu mais lento ou igual aqui:
+`VICTORY_CARD_COMPARE_HOT` (a forma exata da comparação acima: 8 a 50 ms a mais de preparo
+por quadro), `VICTORY_ASYNC_SUBMIT=1` (25,7 fps contra 25,6), `VICTORY_HEAP_RECHECK=0`,
+`VICTORY_PORT_CONSTANTS_ORDER=1` (19,2 fps contra 23,0).
 
 ## Licença
 
